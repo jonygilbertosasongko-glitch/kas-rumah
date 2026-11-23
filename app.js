@@ -149,8 +149,10 @@
     memuat: false,
     mengirim: false,
     galat: null,
-    riwayat: { siklus: null, cari: '', data: {} },
+   riwayat: { siklus: null, cari: '', data: {} },
     posTerbuka: null,
+    posFilter: 'semua',
+    amplopTerbuka: false,
     catat: null,
     hasilCatat: null,
     notif: { status: 'periksa', sub: null },
@@ -574,6 +576,32 @@
           h('span', { class: 'detail' }, 'Pengeluaran Ayah dari sisa gaji setelah transfer istri & cicilan (mobil ' + rpS(r.cicilan.nominal) + ' + pribadi ' + rpS(ka.cicilan_pribadi) + ').')));
     }
 
+    var am = r.amplop, bagAmplop = null;
+    if (am) {
+      var pa = am.porsi === null ? 0 : am.porsi;
+      var posAmp = am.per_pos || [];
+      bagAmplop = h('section', { class: 'bagian' },
+        h('h2', null, 'Amplop istri'),
+        h('button', { class: 'baris', type: 'button', style: 'padding-top:0',
+          'aria-expanded': S.amplopTerbuka ? 'true' : 'false',
+          onclick: function () { S.amplopTerbuka = !S.amplopTerbuka; render({ data: true }); } },
+          h('span', { class: 'nama' }, rpS(am.terpakai) + ' dari ' + rpS(am.jatah)),
+          h('span', { class: 'jumlah' + (am.sisa < 0 ? ' merah' : '') }, am.sisa < 0 ? 'lewat ' + rpS(-am.sisa) : 'sisa ' + rpS(am.sisa)),
+          h('div', { class: 'bar ' + (pa >= 1 ? 'lewat' : (pa >= 0.85 ? 'akan_lewat' : '')), role: 'img', 'aria-label': 'Amplop terpakai ' + persen(pa) },
+            h('div', { class: 'isi', style: 'width:' + Math.min(pa, 1) * 100 + '%' }),
+            h('div', { class: 'waktu', style: 'left:' + Math.min(pw, 1) * 100 + '%' })),
+          h('span', { class: 'detail' }, 'Belanja ' + am.siapa.join(', ') + '. ' +
+            (am.bulan_berisi ? 'Rata-rata ' + am.bulan_berisi + ' bulan terakhir ' + rpS(am.rata_rata) + (am.bulan_lewat ? ', lewat jatah ' + am.bulan_lewat + ' kali.' : '.') : '') +
+            (posAmp.length ? (S.amplopTerbuka ? ' (Ketuk untuk tutup rincian)' : ' (Ketuk untuk lihat top ' + posAmp.length + ' pos)') : ''))),
+        S.amplopTerbuka && posAmp.length ? h('div', { class: 'isi-pos' },
+          posAmp.map(function (x) {
+            var porsiPos = am.terpakai > 0 ? Math.round((x.nominal / am.terpakai) * 100) + '%' : '';
+            return h('div', { class: 'tx' },
+              h('span', null, x.nama + (porsiPos ? ' (' + porsiPos + ')' : '')),
+              h('span', { class: 'angka' }, rpS(x.nominal)));
+          })) : null);
+    }
+
     var cc = r.cicilan, bagCicilan = (cc && cc.tenor) ? h('section', { class: 'bagian' },
       h('h2', null, 'Cicilan mobil'),
       h('div', { class: 'baris', style: 'padding-top:0' },
@@ -584,46 +612,98 @@
         h('span', { class: 'detail' }, 'Sudah masuk ' + rpS(cc.total_dibayar) + '. Sisa ' +
           cc.sisa_bulan + ' bulan lagi (lunas ' + cc.lunas + ').'))) : null;
 
+    var tr = r.tren || [], bagTren = null;
+    if (tr.length) {
+      var maksTren = Math.max.apply(null, tr.map(function (x) { return x.belanja; }).concat([b.jatah || 0, 1]));
+      var garisJatah = b.jatah > 0 ? Math.min((b.jatah / maksTren) * 100, 100) : 0;
+      bagTren = h('section', { class: 'bagian' },
+        h('h2', null, 'Tren belanja 6 siklus'),
+        h('div', { class: 'tren-grafik' },
+          tr.map(function (x) {
+            var tinggi = Math.max(Math.round((x.belanja / maksTren) * 100), 4);
+            var lewatJatah = b.jatah > 0 && x.belanja > b.jatah;
+            var kini = x.siklus === r.siklus.kode;
+            return h('div', { class: 'tren-kolom' + (kini ? ' kini' : '') },
+              h('span', { class: 'tren-angka' }, rpS(x.belanja).replace('Rp\u00a0', '')),
+              h('div', { class: 'tren-rel' },
+                garisJatah > 0 ? h('div', { class: 'tren-garis', style: 'bottom:' + garisJatah + '%' }) : null,
+                h('div', { class: 'tren-batang' + (lewatJatah ? ' lewat' : ''), style: 'height:' + tinggi + '%' })),
+              h('span', { class: 'tren-label' }, x.nama));
+          })),
+        h('p', { class: 'kecil', style: 'margin-top:8px' }, 'Garis putus-putus menandai plafon belanja ' + rpS(b.jatah) + ' (di luar cicilan tetap).'));
+    }
+
+    var bagCatatan = (s.catatan && s.catatan.length) ? h('section', { class: 'bagian' },
+      h('h2', null, 'Catatan'), h('div', { class: 'catatan' }, s.catatan.map(function (c) { return h('p', null, rapi(c)); }))) : null;
+
+    var kotak = (S.data.kotak || []).slice(0, 3);
+    var bagKabar = kotak.length ? h('section', { class: 'bagian kotak-pesan' },
+      h('h2', null, 'Notifikasi terakhir'),
+      kotak.map(function (p) {
+        return h('div', { class: 'pesan' }, h('h3', null, p.judul), h('p', { class: 'kecil' }, rapi(p.isi)),
+          h('p', { class: 'kecil' }, waktuRelatif(Date.parse(p.waktu))));
+      })) : null;
+
     return h('div', null,
       kepala('Siklus ' + BULAN[Number(r.siklus.kode.slice(5)) - 1], sub, true),
-      kartuSambut(), pitaAntre(), pokok, bagPerhatian, bagAyah, bagAmplop, bagCicilan, bagCatatan, bagKabar, infoSegar());
+      kartuSambut(), pitaAntre(), pokok, bagPerhatian, bagAyah, bagAmplop, bagCicilan, bagTren, bagCatatan, bagKabar, infoSegar());
   }
 
   // ================================================================ layar: pos
+ // ================================================================ layar: pos
   function layarPos() {
     var r = R();
     if (!r) return h('div', null, kepala('Pos belanja', null, true), kerangka());
     var pw = r.status ? r.status.porsi_waktu : 1;
-    var transaksi = r.transaksi || [];
+    var filter = S.posFilter || 'semua';
+    function cocokSiapa(t) {
+      if (filter === 'semua') return true;
+      if (filter === 'ayah') return t.siapa === 'Ayah';
+      return t.siapa === 'Mama' || t.siapa === 'Afraz' || t.siapa === 'Rumah';
+    }
+    var transaksi = (r.transaksi || []).filter(cocokSiapa);
+    var segmenFilter = h('div', { class: 'segmen tiga', role: 'radiogroup', 'aria-label': 'Filter kantong belanja', style: 'margin-bottom:14px' },
+      [['semua', 'Semua'], ['istri', 'Istri & Rumah'], ['ayah', 'Ayah']].map(function (op) {
+        return h('button', { type: 'button', role: 'radio', 'aria-checked': filter === op[0] ? 'true' : 'false',
+          onclick: function () { S.posFilter = op[0]; render({ data: true }); } }, op[1]);
+      }));
+    var totalTersaring = transaksi.filter(function (t) { return t.tipe === 'Pengeluaran' && t.pos !== 'Cicilan & Utang' && t.pos !== 'Investasi'; })
+      .reduce(function (s, t) { return s + t.nominal; }, 0);
     function baris(p) {
       var terbuka = S.posTerbuka === p.nama;
-      var rasio = p.jatah > 0 ? p.terpakai / p.jatah : null;
+      var tx = transaksi.filter(function (t) { return t.pos === p.nama && t.tipe === 'Pengeluaran'; });
+      var nilaiTampil = filter === 'semua' ? p.terpakai : tx.reduce(function (s, t) { return s + t.nominal; }, 0);
+      var rasio = (filter === 'semua' && p.jatah > 0) ? nilaiTampil / p.jatah : null;
       var detail;
-      if (p.status === 'tanpa_jatah') detail = 'Belum punya jatah. Muncul karena ada belanja siklus ini.';
+      if (filter !== 'semua') {
+        detail = tx.length ? tx.length + ' transaksi ' + (filter === 'ayah' ? 'Ayah' : 'Istri & Rumah') + ' pada pos ini.' : 'Tidak ada transaksi pada filter ini.';
+      } else if (p.status === 'tanpa_jatah') detail = 'Belum punya jatah. Muncul karena ada belanja siklus ini.';
       else if (p.status === 'lewat') detail = 'Lewat ' + rpS(p.terpakai - p.jatah) + '.';
       else if (p.alasan === 'proyeksi') detail = 'Kalau lajunya tetap jadi ' + rpS(p.proyeksi) + '.';
       else if (p.alasan === 'mendekati') detail = 'Sudah ' + persen(rasio) + ', sisa ' + rpS(p.jatah - p.terpakai) + '.';
       else detail = 'Sisa ' + rpS(p.jatah - p.terpakai) + '.';
-      var tx = transaksi.filter(function (t) { return t.pos === p.nama; });
       var id = 'isi-' + p.nama.replace(/\W+/g, '-');
       return h('li', null,
         h('button', { class: 'baris', type: 'button', 'aria-expanded': terbuka ? 'true' : 'false', 'aria-controls': id,
           onclick: function () { S.posTerbuka = terbuka ? null : p.nama; render({ data: true }); } },
           h('span', { class: 'nama' }, p.nama),
-          h('span', { class: 'jumlah' + (p.status === 'lewat' ? ' merah' : '') }, rpS(p.terpakai),
-            h('span', { class: 'redup', style: 'font-weight:500' }, p.jatah ? ' / ' + rpS(p.jatah).replace('Rp ', '') : '')),
-          p.jatah ? h('div', { class: 'bar ' + p.status, 'aria-hidden': 'true' },
+          h('span', { class: 'jumlah' + (filter === 'semua' && p.status === 'lewat' ? ' merah' : '') }, rpS(nilaiTampil),
+            (filter === 'semua' && p.jatah) ? h('span', { class: 'redup', style: 'font-weight:500' }, ' / ' + rpS(p.jatah).replace('Rp ', '')) : null),
+          (filter === 'semua' && p.jatah) ? h('div', { class: 'bar ' + p.status, 'aria-hidden': 'true' },
             h('div', { class: 'isi', style: 'width:' + Math.min(rasio, 1) * 100 + '%' }),
             r.siklus.berjalan ? h('div', { class: 'waktu', style: 'left:' + Math.min(pw, 1) * 100 + '%' }) : null) : null,
           h('span', { class: 'detail' }, detail)),
         terbuka ? h('div', { class: 'isi-pos', id: id },
-        tx.length ? tx.slice(0, 40).map(function (t) {
+          tx.length ? tx.slice(0, 40).map(function (t) {
             return h('div', { class: 'tx' }, h('span', null, (t.ket || t.kat) + (t.ket ? ', ' + t.kat : '') + (t.siapa && t.siapa !== 'Lainnya' ? ' (' + t.siapa + ')' : '')),
               h('span', { class: 'angka' }, rpS(t.nominal)));
           }) : h('p', { class: 'kecil' }, 'Belum ada transaksi tercatat untuk pos ini.')) : null);
     }
     var grup = PILAR.map(function (pl) {
-      var daftar = r.pos.filter(function (p) { return p.pilar === pl; });
+      var daftar = r.pos.filter(function (p) { return p.pilar === pl; }).filter(function (p) {
+        if (filter === 'semua') return true;
+        return transaksi.some(function (t) { return t.pos === p.nama && t.tipe === 'Pengeluaran'; });
+      });
       if (!daftar.length) return null;
       return h('section', { class: 'bagian' }, h('h2', null, pl), h('ul', { class: 'buku' }, daftar.map(baris)));
     });
@@ -638,7 +718,10 @@
             (r.pemasukan.total ? 'Sesuai catatan pemasukan.' : 'Belum ada pemasukan tercatat untuk siklus ini.'))))));
     return h('div', null,
       kepala('Pos belanja', 'Siklus ' + namaSiklus(r.siklus.kode) + (r.status ? ', hari ke-' + r.status.hari_ke + ' dari ' + r.status.hari_total : ''), true),
-      h('p', { class: 'kecil' }, 'Garis tegak di tiap bar adalah posisi hari ini. Bar yang melewatinya berarti posnya terpakai lebih cepat dari waktu.'),
+      segmenFilter,
+      h('p', { class: 'kecil' }, filter === 'semua' ?
+        'Garis tegak di tiap bar adalah posisi hari ini. Bar yang melewatinya berarti posnya terpakai lebih cepat dari waktu.' :
+        'Menampilkan khusus pengeluaran ' + (filter === 'ayah' ? 'Ayah' : 'Istri & Rumah (Mama, Afraz, Rumah)') + ' dengan total ' + rpS(totalTersaring) + '.'),
       grup, luar, infoSegar());
   }
 
