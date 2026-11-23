@@ -9,7 +9,7 @@
 (function () {
   'use strict';
 
-  var VERSI_APP = '2026.11.23';
+  var VERSI_APP = '2026.11.24';
   var BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September',
     'Oktober', 'November', 'Desember'];
   var BULAN3 = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
