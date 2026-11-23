@@ -5,7 +5,7 @@
  *    kalau push datang kosong, pesannya diambil dari server (aksi=kotak).
  * Ganti VERSI tiap kali berkas aplikasi diubah supaya HP mengambil yang baru.
  */
-var VERSI = 'kas-2026.11.23';
+var VERSI = 'kas-2026.11.24';
 var ASET = [
   './', './index.html', './gaya.css', './app.js', './saran.js', './manifest.webmanifest',
   './font/plus-jakarta-sans.woff2', './ikon/ikon-192.png', './ikon/apple-touch-icon.png', './ikon/lencana-96.png'
