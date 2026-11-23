@@ -560,9 +560,33 @@
           h('p', { class: 'kecil' }, waktuRelatif(Date.parse(p.waktu))));
       })) : null;
 
+    var ka = r.kantong_ayah, bagAyah = null;
+    if (ka) {
+      var pka = ka.porsi === null ? 0 : ka.porsi;
+      bagAyah = h('section', { class: 'bagian' },
+        h('h2', null, 'Kantong Ayah'),
+        h('div', { class: 'baris', style: 'padding-top:0' },
+          h('span', { class: 'nama' }, rpS(ka.terpakai) + ' dari ' + rpS(ka.jatah)),
+          h('span', { class: 'jumlah' + (ka.sisa < 0 ? ' merah' : '') }, ka.sisa < 0 ? 'lewat ' + rpS(-ka.sisa) : 'sisa ' + rpS(ka.sisa)),
+          h('div', { class: 'bar ' + (pka >= 1 ? 'lewat' : (pka >= 0.85 ? 'akan_lewat' : '')), role: 'img', 'aria-label': 'Kantong Ayah terpakai ' + persen(pka) },
+            h('div', { class: 'isi', style: 'width:' + Math.min(pka, 1) * 100 + '%' }),
+            h('div', { class: 'waktu', style: 'left:' + Math.min(pw, 1) * 100 + '%' })),
+          h('span', { class: 'detail' }, 'Pengeluaran Ayah dari sisa gaji setelah transfer istri & cicilan (mobil ' + rpS(r.cicilan.nominal) + ' + pribadi ' + rpS(ka.cicilan_pribadi) + ').')));
+    }
+
+    var cc = r.cicilan, bagCicilan = (cc && cc.tenor) ? h('section', { class: 'bagian' },
+      h('h2', null, 'Cicilan mobil'),
+      h('div', { class: 'baris', style: 'padding-top:0' },
+        h('span', { class: 'nama' }, 'Ke-' + cc.bulan_ke + ' dari ' + cc.tenor + ' bulan (' + persen(cc.porsi) + ')'),
+        h('span', { class: 'jumlah' }, 'sisa ' + rpS(cc.sisa_nominal)),
+        h('div', { class: 'bar', role: 'img', 'aria-label': 'Progres cicilan ' + persen(cc.porsi) },
+          h('div', { class: 'isi', style: 'width:' + Math.min(cc.porsi, 1) * 100 + '%' })),
+        h('span', { class: 'detail' }, 'Sudah masuk ' + rpS(cc.total_dibayar) + '. Sisa ' +
+          cc.sisa_bulan + ' bulan lagi (lunas ' + cc.lunas + ').'))) : null;
+
     return h('div', null,
       kepala('Siklus ' + BULAN[Number(r.siklus.kode.slice(5)) - 1], sub, true),
-      kartuSambut(), pitaAntre(), pokok, bagPerhatian, bagAmplop, bagCatatan, bagKabar, infoSegar());
+      kartuSambut(), pitaAntre(), pokok, bagPerhatian, bagAyah, bagAmplop, bagCicilan, bagCatatan, bagKabar, infoSegar());
   }
 
   // ================================================================ layar: pos
@@ -593,8 +617,8 @@
             r.siklus.berjalan ? h('div', { class: 'waktu', style: 'left:' + Math.min(pw, 1) * 100 + '%' }) : null) : null,
           h('span', { class: 'detail' }, detail)),
         terbuka ? h('div', { class: 'isi-pos', id: id },
-          tx.length ? tx.slice(0, 40).map(function (t) {
-            return h('div', { class: 'tx' }, h('span', null, (t.ket || t.kat) + (t.ket ? ', ' + t.kat : '')),
+        tx.length ? tx.slice(0, 40).map(function (t) {
+            return h('div', { class: 'tx' }, h('span', null, (t.ket || t.kat) + (t.ket ? ', ' + t.kat : '') + (t.siapa && t.siapa !== 'Lainnya' ? ' (' + t.siapa + ')' : '')),
               h('span', { class: 'angka' }, rpS(t.nominal)));
           }) : h('p', { class: 'kecil' }, 'Belum ada transaksi tercatat untuk pos ini.')) : null);
     }
