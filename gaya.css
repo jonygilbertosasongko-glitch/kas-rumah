@@ -582,3 +582,61 @@ select.masukan { appearance: none; -webkit-appearance: none; background-image: l
 @media (min-width: 600px) {
   :root { --tepi: 28px; }
 }
+/* filter 3 segmen & grafik batang mini 6 siklus */
+.segmen.tiga { grid-template-columns: repeat(3, 1fr); }
+.tren-grafik {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  align-items: end;
+  padding-top: 8px;
+}
+.tren-kolom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.tren-angka {
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--tinta-3);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.tren-rel {
+  position: relative;
+  width: 100%;
+  max-width: 34px;
+  height: 88px;
+  border-radius: 6px;
+  background: var(--lintas-dasar);
+  display: flex;
+  align-items: flex-end;
+}
+.tren-batang {
+  width: 100%;
+  border-radius: 6px;
+  background: var(--tinta-2);
+  transition: height .3s var(--mulus);
+}
+.tren-kolom.kini .tren-batang { background: var(--tinta); }
+.tren-batang.lewat { background: var(--merah); }
+.tren-garis {
+  position: absolute;
+  left: -4px;
+  right: -4px;
+  border-top: 1.5px dashed var(--tinta-3);
+  pointer-events: none;
+  z-index: 2;
+}
+.tren-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--tinta-3);
+}
+.tren-kolom.kini .tren-label,
+.tren-kolom.kini .tren-angka {
+  color: var(--tinta);
+  font-weight: 750;
+}
